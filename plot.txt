@@ -1,0 +1,2 @@
+set datafile separator ","
+plot 'n10-g5-k8s-api-test.csv' using 0:3 with lines, 'n10-g5-k8s-api-test.csv' using 0:2 with lines
