@@ -1,11 +1,11 @@
-set title "Docker container and K8s kubectl pods"
+set title "Docker container and K8s kubectl pods grace period 30s"
 show title
 
 # reading CSV files, so change separator
 set datafile separator ","
 
-# scale the x ratio to twice the y
-set size ratio 0.5
+# scale the x ratio to 3 times y
+set size ratio 0.33
 
 # move the legend to not overlap data
 set key left top

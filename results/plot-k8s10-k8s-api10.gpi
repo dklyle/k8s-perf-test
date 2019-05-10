@@ -1,7 +1,7 @@
 #set term png
 #set output "kubectl-api.png"
 
-set title "K8s kubectl pods and K8s API pods, grace period 30s both"
+set title "K8s kubectl pods and K8s API pods, 10s grace period both"
 show title
 
 # reading CSV files, so change separator

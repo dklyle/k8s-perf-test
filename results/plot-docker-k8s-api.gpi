@@ -1,13 +1,10 @@
-#set term png
-#set output "kubectl-api.png"
-
-set title "K8s kubectl pods and K8s API pods, grace period 30s both"
+set title "Docker container and K8s API pods grace period 30s"
 show title
 
 # reading CSV files, so change separator
 set datafile separator ","
 
-# scale the x ratio to three times y
+# scale the x ratio to 3 times y
 set size ratio 0.33
 
 # move the legend to not overlap data
@@ -31,8 +28,8 @@ unset xtics
 # pointsize 1.0 - draw points at 1x default size
 # linewidth 1.5 - draw line at 1.5x the default width
 # lc rgb "#CFCFCF" - change the line color to the rgb value
-plot 'k8s.csv' using 0:2 with linespoints lc rgb '#1f3e74' pointtype 7 pointsize 0.25 linewidth 1 title "pod Start Time ms", \
+plot 'docker.csv' using 0:2 with linespoints lc rgb '#cfcfcf' pointtype 7 pointsize 0.25 linewidth 1 title "container Start Time ms", \
+     ''           using 0:3 with linespoints lc rgb '#ffbe00' pointtype 7 pointsize 0.25 linewidth 1 title "container Stop Time ms", \
+     'k8s-api.csv' using 0:2 with linespoints lc rgb '#1f3e74' pointtype 7 pointsize 0.25 linewidth 1 title "pod Start Time ms", \
      ''        using 0:3 with linespoints lc rgb '#9c4306' pointtype 7 pointsize 0.25 linewidth 1 title "pod Stop Time ms", \
-     'k8s-api.csv' using 0:2 with linespoints pointtype 7 pointsize 0.25 linewidth 1 title "API pod Start Time ms", \
-     ''            using 0:3 with linespoints pointtype 7 pointsize 0.25 linewidth 1 title "API pod Stop Time ms", \
      'scale.csv' using 0:1 with lines lc rgb '#70ad46'linewidth 2 title "# of container/pods x100"
