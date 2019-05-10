@@ -35,4 +35,4 @@ plot 'k8s.csv' using 0:2 with linespoints lc rgb '#1f3e74' pointtype 7 pointsize
      ''        using 0:3 with linespoints lc rgb '#9c4306' pointtype 7 pointsize 0.25 linewidth 1 title "pod Stop Time ms", \
      'k8s-api.csv' using 0:2 with linespoints pointtype 7 pointsize 0.25 linewidth 1 title "API pod Start Time ms", \
      ''            using 0:3 with linespoints pointtype 7 pointsize 0.25 linewidth 1 title "API pod Stop Time ms", \
-     'scale.csv' using 0:1 with lines lc rgb '#70ad46'linewidth 2 title "# of container/pods x100", \
+     'scale.csv' using 0:1 with lines lc rgb '#70ad46'linewidth 2 title "# of container/pods x100"
