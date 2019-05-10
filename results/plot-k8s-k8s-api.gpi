@@ -1,0 +1,38 @@
+#set term png
+#set output "kubectl-api.png"
+
+set title "K8s kubectl pods and K8s API pods"
+show title
+
+# reading CSV files, so change separator
+set datafile separator ","
+
+# scale the x ratio to twice the y
+set size ratio 0.5
+
+# move the legend to not overlap data
+set key left top
+# make legend font smaller
+set key font ",6"
+
+# y-axis is measure in milliseconds
+set ylabel "milliseconds"
+set ylabel font ",6"
+show ylabel
+
+# decrease ytics font
+set ytics font ",6"
+
+# numbers on x-axis are not meaningful, so hide them
+unset xtics
+
+# linespoint - draw line with data points also
+# pointtype 7 - draw data points as circles
+# pointsize 1.0 - draw points at 1x default size
+# linewidth 1.5 - draw line at 1.5x the default width
+# lc rgb "#CFCFCF" - change the line color to the rgb value
+plot 'k8s.csv' using 0:2 with linespoints lc rgb '#1f3e74' pointtype 7 pointsize 0.25 linewidth 1 title "pod Start Time ms", \
+     ''        using 0:3 with linespoints lc rgb '#9c4306' pointtype 7 pointsize 0.25 linewidth 1 title "pod Stop Time ms", \
+     'k8s-api.csv' using 0:2 with linespoints pointtype 7 pointsize 0.25 linewidth 1 title "API pod Start Time ms", \
+     ''            using 0:3 with linespoints pointtype 7 pointsize 0.25 linewidth 1 title "API pod Stop Time ms", \
+     'scale.csv' using 0:1 with lines lc rgb '#70ad46'linewidth 2 title "# of container/pods x100", \

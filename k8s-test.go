@@ -92,8 +92,6 @@ func findRunningPod(wg *sync.WaitGroup, running chan<- TimingRecord, ending chan
 		}
 		// each pod in the running state is output on a newline
 		results := strings.Split(string(out), "\n")
-		fmt.Println("find")
-		fmt.Println(results)
 		for _, r := range results {
 			// above split results contains an empty line, so eliminating those
 			// other pods may be running on the system, only kill the desired
