@@ -148,12 +148,6 @@ func findRunningContainers(wg *sync.WaitGroup, running chan<- TimingRecord, endi
 	}
 }
 
-// type for returning timing values from go routines via channels
-type TimingRecord struct {
-	name string
-	time int64
-}
-
 func main() {
 
 	// input for the number of containers to use for this test run
