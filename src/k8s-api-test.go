@@ -40,9 +40,32 @@ func runPod(wg *sync.WaitGroup, start chan<- TimingRecord, id int, image string)
 	start <- s
 }
 
-func terminatePod(wg *sync.WaitGroup, ended chan<- TimingRecord, name string, grace int) {
+func getPodNode(name string) string {
+	// could use API request and marshall json with
+	// curl -s http://localhost:8090/api/v1/namespaces/default/pods/hello-go-8564769b-rx4lq -X GET -H 'Content-Type: application/json'
+
+	// using kubectl for ease for now
+	// kubectl get pod -o wide <name>
+	commandString := fmt.Sprintf("kubectl get pod -o wide --no-headers %s | awk {'print $7'}", name)
+	cmd := exec.Command("/bin/sh", "-c", commandString)
+
+	out, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("kubectl pod get failed for %v\n", name)
+		fmt.Println(err)
+	}
+
+	// remove the trailing newline from the output
+	return strings.TrimSuffix(string(out), "\n")
+}
+
+func terminatePod(wg *sync.WaitGroup, ended chan<- NodeTimingRecord, name string, grace int) {
 	defer wg.Done()
 
+	// get the node name where the pod is running
+	node := getPodNode(name)
+
+	// terminate the pod
 	// curl -s http://localhost:8090/api/v1/namespaces/default/pods/$name?gracePeriodSeconds=$grace -XDELETE -H 'Content-Type: application/json'
 	commandString := fmt.Sprintf("curl -s http://localhost:8090/api/v1/namespaces/default/pods/%v?gracePeriodSeconds=%v -XDELETE -H 'Content-Type: application/json'", name, grace)
 	cmd := exec.Command("/bin/sh", "-c", commandString)
@@ -55,7 +78,12 @@ func terminatePod(wg *sync.WaitGroup, ended chan<- TimingRecord, name string, gr
 
 	e := pollPodTermination(name)
 
-	ended <- e
+	var record NodeTimingRecord
+	record.name = e.name
+	record.time = e.time
+	record.node = node
+
+	ended <- record
 }
 
 // function for watching for the pod to get fully cleaned up
@@ -94,16 +122,16 @@ func pollPodTermination(name string) TimingRecord {
 }
 
 // function for detecting running pods
-func findRunningPod(wg *sync.WaitGroup, running chan<- TimingRecord, ending chan<- TimingRecord, pods, grace int) {
+func findRunningPod(wg *sync.WaitGroup, running chan<- TimingRecord, ending chan<- NodeTimingRecord, pods, grace int) {
 	defer wg.Done()
 
 	// wait group for pod termination calls
 	var termWG sync.WaitGroup
 	// channel for receiving end times of termination calls
-	ended := make(chan TimingRecord)
+	ended := make(chan NodeTimingRecord)
 
 	// map for storing time when pod reaches is fully deleted
-	endTimes := make(map[string]int64)
+	endTimes := make(map[string]NodeTimingRecord)
 
 	// map for storing time when pod reaches running state
 	runningTimes := make(map[string]int64)
@@ -150,7 +178,7 @@ func findRunningPod(wg *sync.WaitGroup, running chan<- TimingRecord, ending chan
 	// goroutine to receive end time from termination go routines
 	go func() {
 		for e := range ended {
-			endTimes[e.name] = e.time
+			endTimes[e.name] = e
 		}
 	}()
 
@@ -169,18 +197,9 @@ func findRunningPod(wg *sync.WaitGroup, running chan<- TimingRecord, ending chan
 	}
 
 	// return the results over the ending channel
-	for key, value := range endTimes {
-		var eRecord TimingRecord
-		eRecord.name = key
-		eRecord.time = value
-		ending <- eRecord
+	for _, nRecord := range endTimes {
+		ending <- nRecord
 	}
-}
-
-// type for returning timing values from go routines via channels
-type TimingRecord struct {
-	name string
-	time int64
 }
 
 type PodJson struct {
@@ -252,6 +271,60 @@ func createPodJsonFiles(pods int, imageName string) {
 	}
 }
 
+func trackNodeUtilization(utilization chan<- NodeUtilizationRecord, stop <-chan bool) {
+	record := true
+
+	// kubectl top nodes --no-headers
+	commandString := "kubectl top nodes --no-headers"
+
+	// async wait for stop signal
+	go func() {
+		for s := range stop {
+			if s == true {
+				record = false
+				return
+			}
+		}
+	}()
+
+	for record == true {
+		cmd := exec.Command("/bin/sh", "-c", commandString)
+
+		out, err := cmd.Output()
+		if err != nil {
+			fmt.Println("kubectl top pods failed")
+			fmt.Println(err)
+		}
+
+		// split multi-line output
+		nodeData := strings.Split(string(out), "\n")
+		// for each line
+		for _, r := range nodeData {
+			// split into fields by whitespace separators
+			fields := strings.Fields(r)
+			fmt.Println(fields)
+			fmt.Println(len(fields))
+			// check that this isn't an empty line in the output
+			// also check that utilization numbers are valid,
+			// sometimes kubectl top reports nodes with "unknown" as utilization
+			if len(fields) > 0 && !strings.Contains(fields[2], "unknown") && !strings.Contains(fields[4], "unknown") {
+				// we care about name, CPU% and Memory%, fields 0,2,4 respectively
+				var nr NodeUtilizationRecord
+				nr.node = fields[0]
+				nr.cpu = strings.TrimSuffix(fields[2], "%")
+				nr.memory = strings.TrimSuffix(fields[4], "%")
+				nr.time = time.Now().UnixNano()
+
+				// send the record
+				utilization <- nr
+			}
+		}
+
+		// polling interval, over 500ms seems to tax the CPU
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
 func main() {
 
 	// input for the number of pods to use for this test run
@@ -278,11 +351,17 @@ func main() {
 	// assumes time was stored as time.Now().UnixNano()
 	running := make(chan TimingRecord)
 
-	// allocate map for end times
+	// allocate map for end time records
 	// assumes time was stored as time.Now().UnixNano()
-	endTimes := make(map[string]int64)
-	// assumes time was stored as time.Now().UnixNano()
-	ended := make(chan TimingRecord)
+	endTimes := make(map[string]NodeTimingRecord)
+	// assumes time in record was stored as time.Now().UnixNano()
+	ended := make(chan NodeTimingRecord)
+
+	// allocate ? for node utilization samples
+	// map of []NodeUtilizationRecord
+	nodeRecords := make(map[string][]NodeUtilizationRecord)
+	nodes := make(chan NodeUtilizationRecord)
+	stop := make(chan bool)
 
 	var wg sync.WaitGroup
 
@@ -290,6 +369,17 @@ func main() {
 
 	// check/create missing json files for pod specifications
 	createPodJsonFiles(*numPtr, imageName)
+
+	// go routine to track node utilization
+	// not adding to WaitGroup to allow process exit to kill
+	go trackNodeUtilization(nodes, stop)
+
+	// goroutine to wait to receive node utilization samples
+	go func() {
+		for r := range nodes {
+			nodeRecords[r.node] = append(nodeRecords[r.node], r)
+		}
+	}()
 
 	// go routine to poll for "running" times
 	wg.Add(1)
@@ -319,7 +409,7 @@ func main() {
 	// goroutine to wait receive end times from findRunningPod goroutine
 	go func() {
 		for e := range ended {
-			endTimes[e.name] = e.time
+			endTimes[e.name] = e
 		}
 	}()
 
@@ -331,12 +421,13 @@ func main() {
 
 	// print results to console
 	for key, value := range startTimes {
-		fmt.Printf("%v: start: %v\trunning: %v\tterminated :%v\n", key, value, runningTimes[key], endTimes[key])
+		fmt.Printf("%v: start: %v\trunning: %v\tterminated:%v\tnode: %v\n", key, value, runningTimes[key], endTimes[key].time, endTimes[key].node)
 		fmt.Printf("\t%v milliseconds from start to running\n", (runningTimes[key]-value)/int64(time.Millisecond))
-		fmt.Printf("\t%v milliseconds from running to terminated\n", (endTimes[key]-runningTimes[key])/int64(time.Millisecond))
+		fmt.Printf("\t%v milliseconds from running to terminated\n", (endTimes[key].time-runningTimes[key])/int64(time.Millisecond))
 	}
 
 	if *csvPtr == true {
-		writeCSV(*numPtr, *gracePtr, startTimes, runningTimes, endTimes)
+		writeNodeRecordTimingCSV(*numPtr, *gracePtr, startTimes, runningTimes, endTimes)
+		writeNodeUtilizationCSV(nodeRecords, *numPtr, *gracePtr)
 	}
 }

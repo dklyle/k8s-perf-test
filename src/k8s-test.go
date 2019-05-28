@@ -143,12 +143,6 @@ func findRunningPod(wg *sync.WaitGroup, running chan<- TimingRecord, ending chan
 	}
 }
 
-// type for returning timing values from go routines via channels
-type TimingRecord struct {
-	name string
-	time int64
-}
-
 func main() {
 
 	// input for the number of pods to use for this test run
