@@ -1,0 +1,49 @@
+set title "K8s API pods grace period 0s"
+show title
+
+# reading CSV files, so change separator
+set datafile separator ","
+
+# scale the x ratio to 3 times y
+set size ratio 0.33
+
+# move the legend to not overlap data
+set key left top
+# make legend font smaller
+set key font ",6"
+
+# y-axis is measure in milliseconds
+set ylabel "milliseconds"
+set ylabel font ",6"
+show ylabel
+
+# decrease ytics font
+set ytics font ",6"
+
+# numbers on x-axis are not meaningful, so hide them
+unset xtics
+
+# linespoint - draw line with data points also
+# pointtype 7 - draw data points as circles
+# pointsize 1.0 - draw points at 1x default size
+# linewidth 1.5 - draw line at 1.5x the default width
+# lc rgb "#CFCFCF" - change the line color to the rgb value
+# u = using
+# pt = pointtype
+# w = with
+# t = title
+# lw = linewidth
+# ps = pointsize
+# NR = current row number
+plot 'k8s-api.csv' u 0:2 w lines lc rgb '#1f3e74' lw 1 t "pod Start Time ms", \
+     'k8s-api.csv' u 0:3 w lines lc rgb '#9c4306' lw 1 title "pod Stop Time ms", \
+     'scale-half.csv' u 0:1 w lines lc rgb '#70ad46' lw 2 t "# of container/pods x100", \
+     "< awk '$0 ~ /node1$/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'dark-red' pt 7 ps 0.25 t "pod Start Time ms node1", \
+     "< awk '$0 ~ /node1$/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'dark-red' pt 7 ps 0.25 t "pod Stop Time ms node1", \
+     "< awk '$0 ~ /node2$/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'gold' pt 7 ps 0.25 t "pod Start Time ms node2", \
+     "< awk '$0 ~ /node2$/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'gold' pt 7 ps 0.25 t "pod Stop Time ms node2", \
+     "< awk '$0 ~ /node3$/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'sienna1' pt 7 ps 0.25 t "pod Start Time ms node3", \
+     "< awk '$0 ~ /node3$/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'sienna1' pt 7 ps 0.25 t "pod Stop Time ms node3", \
+     "< awk '$0 ~ /node9$/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'dark-magenta' pt 7 ps 0.25 t "pod Start Time ms node9", \
+     "< awk '$0 ~ /node9$/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'dark-magenta' pt 7 ps 0.25 t "pod Stop Time ms node9"
+
