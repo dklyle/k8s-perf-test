@@ -84,8 +84,61 @@ func writeCSV(num, grace int, startTimes, runningTimes, endTimes map[string]int6
 	file.Close()
 }
 
-func writeNodeRecordTimingCSV(num, grace int, startTimes, runningTimes map[string]int64, endTimes map[string]NodeTimingRecord) {
+// find the interpolated utilization record
+func interpolateUtilizationRecord(node string, rTime int64, nodes map[string][]NodeUtilizationRecord) NodeUtilizationRecord {
+	var utilRecord NodeUtilizationRecord
+
+	// store value for timestamp less than timestamp
+	var previous NodeUtilizationRecord
+	// store value for timestamp greater than timestamp
+	var next NodeUtilizationRecord
+
+	// grab the utilization on the node this pod is running on
+	for _, value := range nodes[node] {
+		if value.time <= rTime {
+			previous = value
+		}
+		if value.time >= rTime {
+			next = value
+			// if we found the next timestamp value, stop iterating
+			break
+		}
+	}
+	// calculate weights for weighted average
+	prevDiff := rTime - previous.time
+	nextDiff := next.time - rTime
+	totalDiff := next.time - previous.time
+
+	if totalDiff == 0 {
+		// set value to prev as the records are the same
+		utilRecord = previous
+	} else {
+		prevCpuInt, _ := strconv.Atoi(previous.cpu)
+		prevMemInt, _ := strconv.Atoi(previous.memory)
+		nextCpuInt, _ := strconv.Atoi(next.cpu)
+		nextMemInt, _ := strconv.Atoi(next.memory)
+		prevWeight := float64(prevDiff) / float64(totalDiff)
+		nextWeight := float64(nextDiff) / float64(totalDiff)
+		var r NodeUtilizationRecord
+		r.node = previous.node
+		r.time = rTime
+		// calculate the weighted average i.e., lazy interpolation
+		r.cpu = strconv.FormatFloat((prevWeight*float64(prevCpuInt) + nextWeight*float64(nextCpuInt)), 'f', 0, 64)
+		r.memory = strconv.FormatFloat((prevWeight*float64(prevMemInt) + nextWeight*float64(nextMemInt)), 'f', 0, 64)
+		utilRecord = r
+	}
+	return utilRecord
+}
+
+func writeNodeRecordTimingCSV(num, grace int, startTimes, runningTimes map[string]int64, endTimes map[string]NodeTimingRecord, nodeRecords map[string][]NodeUtilizationRecord) {
 	filePath, fileName := genFilePathAndName(num, grace)
+
+	// sort per node records by timestamp
+	nodes := make(map[string][]NodeUtilizationRecord)
+	for nodeName, records := range nodeRecords {
+		sortedRecords := sortNodeRecordsByTimestamp(records)
+		nodes[nodeName] = sortedRecords
+	}
 
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -99,12 +152,18 @@ func writeNodeRecordTimingCSV(num, grace int, startTimes, runningTimes map[strin
 
 	// some place to store the csv rows to write
 	rows := make([][]string, num)
+
+	// build the rows
 	for i, start := range starts {
+		utilRecord := interpolateUtilizationRecord(endTimes[start.Key].node, runningTimes[start.Key], nodes)
+		//masterRecord := interpolateUtilizationRecord("node1", runningTimes[start.Key], nodes)
 		rows[i] = []string{
 			strconv.Itoa(i),
 			strconv.FormatInt((runningTimes[start.Key]-start.Value)/int64(time.Millisecond), 10),
 			strconv.FormatInt((endTimes[start.Key].time-runningTimes[start.Key])/int64(time.Millisecond), 10),
 			endTimes[start.Key].node,
+			utilRecord.cpu,
+			utilRecord.memory,
 		}
 	}
 

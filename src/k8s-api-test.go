@@ -427,7 +427,7 @@ func main() {
 	}
 
 	if *csvPtr == true {
-		writeNodeRecordTimingCSV(*numPtr, *gracePtr, startTimes, runningTimes, endTimes)
+		writeNodeRecordTimingCSV(*numPtr, *gracePtr, startTimes, runningTimes, endTimes, nodeRecords)
 		writeNodeUtilizationCSV(nodeRecords, *numPtr, *gracePtr)
 	}
 }
