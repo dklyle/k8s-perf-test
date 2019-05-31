@@ -12,7 +12,7 @@ These are the executables for testing:
 These executables should be copied to the Master node of a Kubernetes cluster.
 
 ## running
-The script `run-trials.sh` will run a series of tests with increasing numbers of containers of pods. There are three parameters needed.
+The script `run-trials.sh` will run a series of tests with increasing numbers of containers or pods. There are three parameters needed.
 
 `./run-trials.sh PROGRAM GRACE CSV`
 Where:
@@ -21,4 +21,7 @@ Where:
 * CSV is either `true` or `false` indicating to write results to file in csv format or not
 
 ## data
+If `CSV` was specified as `true` when executing `run-trials.sh`, then
+`run-trials.sh` will output a set of directories, one for each number of container or pods that was started simultaneously. These directories will be named by the nanosecond unix timestamp when they began.
+In each directory there will be one csv file.
 ...

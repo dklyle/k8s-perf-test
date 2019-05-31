@@ -156,7 +156,10 @@ func writeNodeRecordTimingCSV(num, grace int, startTimes, runningTimes map[strin
 	// build the rows
 	for i, start := range starts {
 		utilRecord := interpolateUtilizationRecord(endTimes[start.Key].node, runningTimes[start.Key], nodes)
-		//masterRecord := interpolateUtilizationRecord("node1", runningTimes[start.Key], nodes)
+		// this is a kludge to record master node utilization, hard coded to 1 master
+		// currently, will need to come up with something more programmatic when time
+		// allows
+		masterRecord := interpolateUtilizationRecord("node1", runningTimes[start.Key], nodes)
 		rows[i] = []string{
 			strconv.Itoa(i),
 			strconv.FormatInt((runningTimes[start.Key]-start.Value)/int64(time.Millisecond), 10),
@@ -164,6 +167,8 @@ func writeNodeRecordTimingCSV(num, grace int, startTimes, runningTimes map[strin
 			endTimes[start.Key].node,
 			utilRecord.cpu,
 			utilRecord.memory,
+			masterRecord.cpu,
+			masterRecord.memory,
 		}
 	}
 
