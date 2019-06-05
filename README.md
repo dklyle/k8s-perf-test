@@ -47,7 +47,7 @@ g`GRACE`.
 Included in the source code for this project is the `results` directory where
 some data handling scripts are included, most notably `concat-data.sh`.
 
-`./concat-data.sh TEST_TYPE GRACE1 [GRACE2]
+`./concat-data.sh TEST_TYPE GRACE1 [GRACE2]`
 * TEST_TYPE is one of k8s-api, k8s, docker
 * GRACE1 the grace value in the file names
 * GRACE2 the grace value in the file names this value is optional if stitching
