@@ -201,8 +201,9 @@ func writeNodeUtilizationCSV(nodeRecords map[string][]NodeUtilizationRecord, num
 		// build filename
 		programName := os.Args[0]
 		// strip local dir invocation if present
-		if strings.HasPrefix(os.Args[0], "./") {
-			programName = os.Args[0][2:]
+		if strings.LastIndex(os.Args[0], "/") != -1 {
+			i := strings.LastIndex(os.Args[0], "/")
+			programName = os.Args[0][(i + 1):]
 		}
 		// create a directory with the current timestamp
 		now := strconv.FormatInt(records[0].time, 10)
