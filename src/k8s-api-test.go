@@ -320,8 +320,8 @@ func trackNodeUtilization(utilization chan<- NodeUtilizationRecord, stop <-chan 
 			}
 		}
 
-		// polling interval, over 500ms seems to tax the CPU
-		time.Sleep(300 * time.Millisecond)
+		// polling interval, under 500ms seems to tax the CPU
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
