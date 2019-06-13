@@ -21,14 +21,14 @@ fi
 
 d1="${1}-g${2}"
 c1="${d1}/g${2}-${1}-test.csv"
-cp $d1/155*/*.csv $d1
-paste -s -d'\n' $d1/n5-g$2-$1-test.csv $d1/n10-g$2-$1-test.csv $d1/n15-g$2-$1-test.csv $d1/n20-g$2-$1-test.csv $d1/n30-g$2-$1-test.csv $d1/n40-g$2-$1-test.csv $d1/n50-g$2-$1-test.csv $d1/n75-g$2-$1-test.csv $d1/n100-g$2-$1-test.csv $d1/n200-g$2-$1-test.csv > $c1
+cp $d1/15*/*.csv $d1
+paste -s -d'\n' $d1/n5-g$2-$1-test.csv $d1/n10-g$2-$1-test.csv $d1/n15-g$2-$1-test.csv $d1/n20-g$2-$1-test.csv $d1/n30-g$2-$1-test.csv $d1/n40-g$2-$1-test.csv $d1/n50-g$2-$1-test.csv $d1/n75-g$2-$1-test.csv $d1/n100-g$2-$1-test.csv $d1/n200-g$2-$1-test.csv $d1/n300-g$2-$1-test.csv > $c1
 
 if [[ $# > 2 ]]; then
     d2="${1}-g${3}"
     c2="${d2}/g${3}-${1}-test.csv"
-    cp $d2/155*/*.csv $d2
-    paste -s -d'\n' $d2/n5-g$3-$1-test.csv $d2/n10-g$3-$1-test.csv $d2/n15-g$3-$1-test.csv $d2/n20-g$3-$1-test.csv $d2/n30-g$3-$1-test.csv $d2/n40-g$3-$1-test.csv $d2/n50-g$3-$1-test.csv $d2/n75-g$3-$1-test.csv $d2/n100-g$3-$1-test.csv $d2/n200-g$3-$1-test.csv > $c2
+    cp $d2/15*/*.csv $d2
+    paste -s -d'\n' $d2/n5-g$3-$1-test.csv $d2/n10-g$3-$1-test.csv $d2/n15-g$3-$1-test.csv $d2/n20-g$3-$1-test.csv $d2/n30-g$3-$1-test.csv $d2/n40-g$3-$1-test.csv $d2/n50-g$3-$1-test.csv $d2/n75-g$3-$1-test.csv $d2/n100-g$3-$1-test.csv $d2/n200-g$3-$1-test.csv $d2/n300-g$3-$1-test.csv > $c2
 
     paste -s -d'\n' $c1 $c2 > $1.csv
 else

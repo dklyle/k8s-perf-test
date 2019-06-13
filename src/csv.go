@@ -132,7 +132,7 @@ func interpolateUtilizationRecord(node string, rTime int64, nodes map[string][]N
 	return utilRecord
 }
 
-func writeNodeRecordTimingCSV(num, grace int, startTimes, runningTimes map[string]int64, endTimes map[string]NodeTimingRecord, nodeRecords map[string][]NodeUtilizationRecord) {
+func writeNodeRecordTimingCSV(num, grace int, startTimes, runningTimes map[string]int64, endTimes map[string]NodeTimingRecord, nodeRecords map[string][]NodeUtilizationRecord, priorities map[string]string) {
 	filePath, fileName := genFilePathAndName(num, grace)
 
 	// sort per node records by timestamp
@@ -171,6 +171,7 @@ func writeNodeRecordTimingCSV(num, grace int, startTimes, runningTimes map[strin
 			utilRecord.memory,
 			masterRecord.cpu,
 			masterRecord.memory,
+			priorities[start.Key],
 		}
 	}
 

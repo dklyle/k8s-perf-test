@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -215,8 +216,10 @@ type PodMetadata struct {
 }
 
 type PodSpec struct {
-	Containers    []PodSpecContainer `json:"containers"`
-	RestartPolicy string             `json:"restartPolicy"`
+	Containers             []PodSpecContainer `json:"containers"`
+	RestartPolicy          string             `json:"restartPolicy"`
+	PriorityClassName      string             `json:"priorityClassName"`
+	TerminationGracePeriod int                `json:"terminationGracePeriodSeconds"`
 }
 
 type PodSpecContainer struct {
@@ -226,10 +229,23 @@ type PodSpecContainer struct {
 }
 
 // creates 'pods' number of json files in /tmp
-func createPodJsonFiles(pods int, imageName string) {
+func createPodJsonFiles(pods int, imageName string, hp, mp int) map[string]string {
+	priorityMap := make(map[string]string)
+
 	for i := 0; i < pods; i++ {
 		podName := fmt.Sprintf("%v%v", POD_NAME_PREFIX, i)
 		jsonFileName := fmt.Sprintf("/tmp/%v.json", podName)
+
+		// calc job priority and store it
+		priorityClassName := calcPriority(hp, mp)
+		priorityMap[podName] = priorityClassName
+		graceSeconds := 30
+		if 0 == strings.Compare(priorityClassName, LOW_PRIORITY) {
+			graceSeconds = 0
+		}
+		if 0 == strings.Compare(priorityClassName, MEDIUM_PRIORITY) {
+			graceSeconds = 5
+		}
 
 		// if file does not already exist, create it, otherwise skip create
 		if _, err := os.Stat(jsonFileName); os.IsNotExist(err) {
@@ -239,8 +255,10 @@ func createPodJsonFiles(pods int, imageName string) {
 				Command: []string{"sleep", "3600"},
 			}
 			podSpec := PodSpec{
-				Containers:    []PodSpecContainer{podSpecContainer},
-				RestartPolicy: "Never",
+				Containers:             []PodSpecContainer{podSpecContainer},
+				RestartPolicy:          "Never",
+				PriorityClassName:      priorityClassName,
+				TerminationGracePeriod: graceSeconds,
 			}
 			podMetadata := PodMetadata{
 				Name:      podName,
@@ -269,6 +287,7 @@ func createPodJsonFiles(pods int, imageName string) {
 			}
 		}
 	}
+	return priorityMap
 }
 
 func trackNodeUtilization(utilization chan<- NodeUtilizationRecord, stop <-chan bool) {
@@ -325,6 +344,86 @@ func trackNodeUtilization(utilization chan<- NodeUtilizationRecord, stop <-chan 
 	}
 }
 
+const HIGH_PRIORITY = "high-priority"
+const MEDIUM_PRIORITY = "medium-priority"
+const LOW_PRIORITY = "low-priority"
+
+// function for "randomly" determining workload priority based on percentages passed in
+func calcPriority(hp, mp int) string {
+	r := rand.Intn(100)
+	fmt.Printf("random value: %v\n", r)
+	if r >= (100 - hp) {
+		fmt.Printf("setting high: %v > %v\n", r, hp)
+		return HIGH_PRIORITY
+	}
+	if r >= (100 - mp) {
+		fmt.Printf("setting medium: %v > %v\n", r, mp)
+		return MEDIUM_PRIORITY
+	}
+
+	fmt.Printf("setting low\n")
+	return LOW_PRIORITY
+}
+
+func createPriorityClass(name string, value int) {
+	// kubectl create priorityclass ...
+	commandString := fmt.Sprintf("kubectl create priorityclass %s --value=%d --description=\"%s\" --global-default=%v",
+		name, value, name, strings.Compare(name, LOW_PRIORITY) == 0)
+	cmd := exec.Command("/bin/sh", "-c", commandString)
+
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println("kubectl create priorityclass failed for " + name)
+		fmt.Println(err)
+	}
+}
+
+func verifyPriorityClasses() {
+	// kubectl get priorityclass | awk $1 match HIGH, MEDIUM, LOW
+	commandString := "kubectl get priorityclass --no-headers | awk {'print $1'}"
+	cmd := exec.Command("/bin/sh", "-c", commandString)
+
+	// record the time the command is run
+	out, err := cmd.Output()
+	if err != nil {
+		fmt.Println("kubectl get priorityclass failed")
+		fmt.Println(err)
+	}
+
+	foundHigh := false
+	foundMed := false
+	foundLow := false
+
+	// each pod in the running state is output on a newline
+	results := strings.Split(string(out), "\n")
+	for _, r := range results {
+		// above split results contains an empty line, so eliminating those
+		if len(r) > 0 {
+			if strings.HasPrefix(r, HIGH_PRIORITY) {
+				foundHigh = true
+			}
+			if strings.HasPrefix(r, MEDIUM_PRIORITY) {
+				foundMed = true
+			}
+			if strings.HasPrefix(r, LOW_PRIORITY) {
+				foundLow = true
+			}
+		}
+	}
+	if !foundHigh {
+		// create High
+		createPriorityClass(HIGH_PRIORITY, 100000)
+	}
+	if !foundMed {
+		// create Medium
+		createPriorityClass(MEDIUM_PRIORITY, 10000)
+	}
+	if !foundLow {
+		// create Low
+		createPriorityClass(LOW_PRIORITY, 1000)
+	}
+}
+
 func main() {
 
 	// input for the number of pods to use for this test run
@@ -332,9 +431,12 @@ func main() {
 
 	// the amount of time between SIGTERM and SIGKILL for pod termination
 	// the default for kubectl delete pod is 30 seconds, preserving that default
-	gracePtr := flag.Int("grace", 30, "the number of seconds for graceful shutdown")
+	gracePtr := flag.Int("grace", 30, "the number of seconds for graceful shutdown, default is 30")
 
-	csvPtr := flag.Bool("csv", false, "write results to CSV format file")
+	csvPtr := flag.Bool("csv", false, "write results to CSV format file, default is false")
+
+	hpPtr := flag.Int("hp", 0, "integer (0-100) percentage of high priority workloads, default is 0")
+	mpPtr := flag.Int("mp", 0, "integer (0-100) percentage of medium priority workloads, default is 0")
 
 	flag.Parse()
 
@@ -357,8 +459,7 @@ func main() {
 	// assumes time in record was stored as time.Now().UnixNano()
 	ended := make(chan NodeTimingRecord)
 
-	// allocate ? for node utilization samples
-	// map of []NodeUtilizationRecord
+	// allocate map for node utilization samples
 	nodeRecords := make(map[string][]NodeUtilizationRecord)
 	nodes := make(chan NodeUtilizationRecord)
 	stop := make(chan bool)
@@ -367,8 +468,14 @@ func main() {
 
 	fmt.Printf("Running test with %v pods and a shutdown grace period of %v seconds\n", *numPtr, *gracePtr)
 
+	// if specifying priorities, check that priorityclasses exist, if not
+	// create them
+	if *mpPtr > 0 || *hpPtr > 0 {
+		verifyPriorityClasses()
+	}
+
 	// check/create missing json files for pod specifications
-	createPodJsonFiles(*numPtr, imageName)
+	priorityMap := createPodJsonFiles(*numPtr, imageName, *hpPtr, *mpPtr)
 
 	// go routine to track node utilization
 	// not adding to WaitGroup to allow process exit to kill
@@ -421,13 +528,13 @@ func main() {
 
 	// print results to console
 	for key, value := range startTimes {
-		fmt.Printf("%v: start: %v\trunning: %v\tterminated:%v\tnode: %v\n", key, value, runningTimes[key], endTimes[key].time, endTimes[key].node)
+		fmt.Printf("%v: start: %v\trunning: %v\tterminated:%v\tnode: %v\tpriority:%v\n", key, value, runningTimes[key], endTimes[key].time, endTimes[key].node, priorityMap[key])
 		fmt.Printf("\t%v milliseconds from start to running\n", (runningTimes[key]-value)/int64(time.Millisecond))
 		fmt.Printf("\t%v milliseconds from running to terminated\n", (endTimes[key].time-runningTimes[key])/int64(time.Millisecond))
 	}
 
 	if *csvPtr == true {
-		writeNodeRecordTimingCSV(*numPtr, *gracePtr, startTimes, runningTimes, endTimes, nodeRecords)
+		writeNodeRecordTimingCSV(*numPtr, *gracePtr, startTimes, runningTimes, endTimes, nodeRecords, priorityMap)
 		writeNodeUtilizationCSV(nodeRecords, *numPtr, *gracePtr)
 	}
 }
