@@ -80,15 +80,28 @@ unset xtics
 #     "< awk '$0 ~ /node9/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w lines lc rgb 'dark-magenta' dt "." t "pod Start ms node9", \
 #     "< awk '$0 ~ /node9/ {print NR\",\"$0}' k8s-api.csv" u 1:6 w lines lc rgb 'dark-magenta' t "node9 CPU %" axis x1y2
 
-set title "K8s API pods grace=0s 10% high-priority"
-plot 'scale-max.csv' u 0:1 w lines lc rgb '#70ad46' lw 2 t "# of pods x100", \
+#set title "K8s API pods grace=0s 10% high-priority"
+#plot 'scale-max.csv' u 0:1 w lines lc rgb '#70ad46' lw 2 t "# of pods x100", \
+#     "< awk '$0 ~ /node2/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'gold' pt 7 ps 0.25 t "pod Start ms node2", \
+#     "< awk '$0 ~ /node2/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'gold' pt 7 ps 0.25 t "pod Stop ms node2", \
+#     "< awk '$0 ~ /node3/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'sienna1' pt 7 ps 0.25 t "pod Start ms node3", \
+#     "< awk '$0 ~ /node3/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'sienna1' pt 7 ps 0.25 t "pod Stop ms node3", \
+#     "< awk '$0 ~ /node9/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'dark-magenta' pt 7 ps 0.25 t "pod Start ms node9", \
+#     "< awk '$0 ~ /node9/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'dark-magenta' pt 7 ps 0.25 t "pod Stop ms node9", \
+#     "< awk '$0 ~ /high-priority/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w lines lc rgb 'red' t "high-priority pod Start ms"
+
+set title "K8s API pods grace=0s 100% high-priority on 300 pod baseline"
+plot 'scale-priority.csv' u 0:1 w lines lc rgb '#70ad46' lw 2 t "# of pods x100", \
      "< awk '$0 ~ /node2/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'gold' pt 7 ps 0.25 t "pod Start ms node2", \
      "< awk '$0 ~ /node2/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'gold' pt 7 ps 0.25 t "pod Stop ms node2", \
+     "< awk '$0 ~ /node2/ {print NR\",\"$0}' k8s-api.csv" u 1:6 w lines lc rgb 'gold' t "node2 CPU %" axis x1y2, \
      "< awk '$0 ~ /node3/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'sienna1' pt 7 ps 0.25 t "pod Start ms node3", \
      "< awk '$0 ~ /node3/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'sienna1' pt 7 ps 0.25 t "pod Stop ms node3", \
+     "< awk '$0 ~ /node3/ {print NR\",\"$0}' k8s-api.csv" u 1:6 w lines lc rgb 'sienna1' t "node3 CPU %" axis x1y2, \
      "< awk '$0 ~ /node9/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w points lc rgb 'dark-magenta' pt 7 ps 0.25 t "pod Start ms node9", \
      "< awk '$0 ~ /node9/ {print NR\",\"$0}' k8s-api.csv" u 1:4 w points lc rgb 'dark-magenta' pt 7 ps 0.25 t "pod Stop ms node9", \
-     "< awk '$0 ~ /high-priority/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w lines lc rgb 'red' t "high-priority pod Start ms"
+     "< awk '$0 ~ /node9/ {print NR\",\"$0}' k8s-api.csv" u 1:6 w lines lc rgb 'dark-magenta' t "node9 CPU %" axis x1y2, \
+     "< awk '$0 ~ /high-priority/ {print NR\",\"$0}' k8s-api.csv" u 1:3 w lines lc rgb 'red' dt "-" t "high-priority pod Start ms"
 
 # start/stop and CPU util
 #plot 'scale-half.csv' u 0:1 w lines lc rgb '#70ad46' lw 2 t "# of pods x100", \
