@@ -303,7 +303,8 @@ func createPodJsonFiles(pods int, podPrefix, imageName string, hp, mp int) map[s
 			podSpecContainer := PodSpecContainer{
 				Name:    imageName,
 				Image:   imageName,
-				Command: []string{"sleep", "3600"},
+				Command: []string{"dd", "if=/dev/zero", "of=/dev/null"},
+				//Command: []string{"sleep", "3600"},
 			}
 			podSpec := PodSpec{
 				Containers:             []PodSpecContainer{podSpecContainer},
