@@ -24,6 +24,7 @@ API is required. The simplest was to do this is install and configure Prometheus
 
 <code>
 git clone https://github.com/coreos/kube-prometheus
+
 kubectl create -f kube-prometheus/manifests/
 </code>
 
