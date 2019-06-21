@@ -271,13 +271,27 @@ type PodSpec struct {
 	RestartPolicy          string             `json:"restartPolicy"`
 	PriorityClassName      string             `json:"priorityClassName"`
 	TerminationGracePeriod int                `json:"terminationGracePeriodSeconds"`
-	//LimitCPU
 }
 
 type PodSpecContainer struct {
-	Name    string   `json:"name"`
-	Image   string   `json:"image"`
-	Command []string `json:"command"`
+	Name      string        `json:"name"`
+	Image     string        `json:"image"`
+	Command   []string      `json:"command"`
+	Resources ResourcesType `json:"resources"`
+}
+
+type ResourcesType struct {
+	Requests RequestsType `json:"requests"`
+	Limits   LimitsType   `json:"limits"`
+}
+
+type RequestsType struct {
+	CPU string `json:"cpu"`
+	//Memory string `json:"memory"`
+}
+
+type LimitsType struct {
+	CPU string `json:"cpu"`
 }
 
 // creates 'pods' number of json files in /tmp
@@ -306,6 +320,14 @@ func createPodJsonFiles(pods int, podPrefix, imageName string, hp, mp int) map[s
 				Image:   imageName,
 				Command: []string{"dd", "if=/dev/zero", "of=/dev/null"},
 				//Command: []string{"sleep", "3600"},
+				Resources: ResourcesType{
+					Requests: RequestsType{
+						CPU: "100m",
+					},
+					Limits: LimitsType{
+						CPU: "100m",
+					},
+				},
 			}
 			podSpec := PodSpec{
 				Containers:             []PodSpecContainer{podSpecContainer},
