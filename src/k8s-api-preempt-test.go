@@ -271,6 +271,7 @@ type PodSpec struct {
 	RestartPolicy          string             `json:"restartPolicy"`
 	PriorityClassName      string             `json:"priorityClassName"`
 	TerminationGracePeriod int                `json:"terminationGracePeriodSeconds"`
+	//LimitCPU
 }
 
 type PodSpecContainer struct {
