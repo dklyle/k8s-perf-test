@@ -22,11 +22,10 @@ A couple of customizations are required to a standard Kubernetes cluster.
 2. For `k8s-api-test` and `k8s-api-preempt-test` configuration of the metrics
 API is required. The simplest was to do this is install and configure Prometheus:
 
-<code>
+```
 git clone https://github.com/coreos/kube-prometheus
-
 kubectl create -f kube-prometheus/manifests/
-</code>
+```
 
 
 ## running
