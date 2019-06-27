@@ -295,7 +295,7 @@ type LimitsType struct {
 }
 
 // creates 'pods' number of json files in /tmp
-func createPodJsonFiles(pods int, podPrefix, imageName string, hp, mp int) map[string]string {
+func createPodJsonFiles(pods int, podPrefix, imageName string, hp, mp, cpu int) map[string]string {
 	priorityMap := make(map[string]string)
 
 	for i := 0; i < pods; i++ {
@@ -313,6 +313,8 @@ func createPodJsonFiles(pods int, podPrefix, imageName string, hp, mp int) map[s
 			graceSeconds = 5
 		}
 
+		cpuString := fmt.Sprintf("%dm", cpu)
+
 		// if file does not already exist, create it, otherwise skip create
 		if _, err := os.Stat(jsonFileName); os.IsNotExist(err) {
 			podSpecContainer := PodSpecContainer{
@@ -322,10 +324,10 @@ func createPodJsonFiles(pods int, podPrefix, imageName string, hp, mp int) map[s
 				//Command: []string{"sleep", "3600"},
 				Resources: ResourcesType{
 					Requests: RequestsType{
-						CPU: "100m",
+						CPU: cpuString,
 					},
 					Limits: LimitsType{
-						CPU: "100m",
+						CPU: cpuString,
 					},
 				},
 			}
@@ -515,6 +517,10 @@ func main() {
 
 	fillerPtr := flag.Int("filler", 100, "the number of pods to run on the system before starting high priority pods, default is 100")
 
+	cpuPtr := flag.Int("cpu", 100, "the amount of MiCPU the request and limit for pods (1000 is 1 CPU), default is 100")
+
+	workloadDelayPtr := flag.Int("delay", 0, "the delay in seconds between high priority workload starts, default is 0")
+
 	flag.Parse()
 
 	imageName := "busybox"
@@ -552,7 +558,7 @@ func main() {
 	}
 
 	// check/create missing json files for pod specifications
-	priorityMap := createPodJsonFiles(*numPtr, POD_NAME_PREFIX, imageName, *hpPtr, *mpPtr)
+	priorityMap := createPodJsonFiles(*numPtr, POD_NAME_PREFIX, imageName, *hpPtr, *mpPtr, *cpuPtr)
 
 	// go routine to track node utilization
 	// not adding to WaitGroup to allow process exit to kill
@@ -566,7 +572,7 @@ func main() {
 	}()
 
 	// run base load of pods
-	_ = createPodJsonFiles(*fillerPtr, POD_FILLER_PREFIX, imageName, 0, 0)
+	_ = createPodJsonFiles(*fillerPtr, POD_FILLER_PREFIX, imageName, 0, 0, *cpuPtr)
 	for i := 0; i < *fillerPtr; i++ {
 		runFillerPod(i, "busybox")
 	}
@@ -583,6 +589,7 @@ func main() {
 	for i := 0; i < *numPtr; i++ {
 		wg.Add(1)
 		go runPod(&wg, starts, i, "busybox")
+		time.Sleep(time.Duration(1000**workloadDelayPtr) * time.Millisecond)
 	}
 
 	// goroutine to wait receive start times from runPod goroutines
